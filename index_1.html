@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Card File</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🗂️</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+:root {
+  --bg: #2F3B46; --bg-2: #3d4c59;
+  --card: #FBF6EA; --card-back: #F3ECDB;
+  --ink: #2B2420; --ink-soft: #6b6155;
+  --accent: #2F6F8F; --accent-deep: #1f4f68;
+  --danger: #B8432F; --danger-soft: #F3DAD3;
+  --success: #4A7A5C; --success-soft: #E1EBE3;
+  --needs: #B8860B; --needs-soft: #F3E9D2;
+  --rule: #d8cdb4; --focus: #FDE047;
+  --on-bg: #E6ECF0; --on-bg-soft: #B9C6CF;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; min-height: 100vh;
+  background: radial-gradient(ellipse at 18% -8%, var(--bg-2), transparent 58%), var(--bg);
+  font-family: 'IBM Plex Sans', sans-serif; color: var(--on-bg);
+  display: flex; flex-direction: column; align-items: center;
+  padding: 26px 16px 40px;
+}
+.wrap { width: 100%; max-width: 460px; }
+button { font-family: inherit; }
+
+.hd { text-align: center; margin-bottom: 18px; }
+.hd-label { font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 600; letter-spacing: .14em; color: var(--on-bg-soft); }
+.hd h1 { font-family: 'IBM Plex Mono', monospace; font-size: 22px; font-weight: 700; margin: 4px 0 0; color: #FBF6EA; }
+.hd h1 .dot { color: #7FB8D4; }
+
+/* ===== light panels (auth, forms) ===== */
+.panel { background: var(--card); color: var(--ink); border-radius: 14px; padding: 24px 20px 20px; box-shadow: 0 10px 28px rgba(0,0,0,.35); position: relative; margin-bottom: 16px; }
+.panel::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 8px; background: var(--accent); border-radius: 14px 14px 0 0; }
+.panel-title { font-family: 'IBM Plex Mono', monospace; font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+.panel-sub { font-size: 12.5px; color: var(--ink-soft); margin-bottom: 16px; line-height: 1.5; }
+.field { margin-bottom: 11px; }
+.field label { display: block; font-size: 11.5px; font-weight: 600; color: var(--ink-soft); margin-bottom: 5px; }
+.field input, .field textarea, .field select {
+  width: 100%; font-family: 'IBM Plex Sans', sans-serif; font-size: 14.5px;
+  padding: 10px 12px; border-radius: 9px; border: 1.5px solid var(--rule);
+  background: #fff; color: var(--ink);
+}
+.field textarea { resize: vertical; min-height: 64px; line-height: 1.4; }
+.field input:focus-visible, .field textarea:focus-visible, .field select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.field .opt-lbl { font-weight: 400; opacity: .8; }
+.btn { font-weight: 700; font-size: 14px; border: none; border-radius: 9px; padding: 11px 14px; cursor: pointer; }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-ghost { background: transparent; color: var(--ink-soft); border: 1.5px solid var(--rule); }
+.btn-danger { background: var(--danger); color: #fff; }
+.btn:disabled { opacity: .55; cursor: default; }
+.btn-wide { width: 100%; }
+.row { display: flex; gap: 8px; }
+.row > * { flex: 1; }
+.auth-switch { text-align: center; margin-top: 14px; font-size: 13px; color: var(--ink-soft); }
+.auth-switch button { background: none; border: none; color: var(--accent); font-weight: 700; cursor: pointer; font-size: 13px; padding: 0; }
+.msg { font-size: 12.5px; border-radius: 8px; padding: 9px 12px; margin-bottom: 12px; }
+.msg.err { background: var(--danger-soft); color: #8a2f20; }
+.msg.ok { background: var(--success-soft); color: var(--success); }
+
+.loading { text-align: center; padding: 60px 0; font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: var(--on-bg-soft); }
+
+/* ===== top area ===== */
+.topbar { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 12px; }
+.who { font-size: 11.5px; color: var(--on-bg-soft); font-family: 'IBM Plex Mono', monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.logout { background: none; border: 1px solid rgba(255,255,255,.22); color: var(--on-bg); font-size: 11.5px; font-weight: 600; border-radius: 8px; padding: 5px 11px; cursor: pointer; flex-shrink: 0; }
+
+.filter-row { display: flex; justify-content: center; margin: 12px 0 12px; }
+.deck-pill { font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 600; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.16); color: var(--on-bg); padding: 6px 14px; border-radius: 20px; display: flex; align-items: center; gap: 6px; max-width: 100%; }
+.deck-pill select { background: transparent; border: none; color: #FBF6EA; font-family: inherit; font-size: 12px; font-weight: 600; outline: none; max-width: 260px; }
+.deck-pill select option { color: #2B2420; }
+
+.dir-row { display: flex; justify-content: center; margin-bottom: 14px; }
+.dir-toggle { display: flex; background: rgba(0,0,0,.22); border-radius: 10px; padding: 3px; font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 700; }
+.dir-btn { border: none; background: transparent; color: var(--on-bg-soft); padding: 7px 13px; border-radius: 7px; cursor: pointer; font-family: inherit; font-weight: 700; }
+.dir-btn[aria-pressed="true"] { background: var(--accent); color: #fff; }
+
+.tabs { display: flex; gap: 4px; margin: 0 0 18px; background: rgba(0,0,0,.2); border-radius: 12px; padding: 4px; }
+.tab { flex: 1; text-align: center; font-size: 13px; font-weight: 600; color: var(--on-bg-soft); padding: 9px 4px; border-radius: 9px; border: none; background: transparent; cursor: pointer; }
+.tab[aria-selected="true"] { background: var(--card); color: var(--ink); }
+
+.stats { display: flex; gap: 10px; margin-bottom: 18px; }
+.stat { flex: 1; border-radius: 12px; padding: 11px 10px; text-align: center; border: 1px solid rgba(255,255,255,.1); }
+.stat-learning { background: rgba(184,134,11,.14); }
+.stat-known { background: rgba(74,122,92,.18); }
+.stat-n { font-family: 'IBM Plex Mono', monospace; font-size: 21px; font-weight: 700; }
+.stat-learning .stat-n { color: #E8C878; } .stat-known .stat-n { color: #8FCBA3; }
+.stat-lbl { font-size: 10.5px; color: var(--on-bg-soft); margin-top: 2px; }
+
+/* ===== flashcard ===== */
+.stage { perspective: 1400px; margin-bottom: 16px; }
+.card-btn { display: block; width: 100%; cursor: pointer; }
+.card-btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; border-radius: 14px; }
+.card { position: relative; width: 100%; height: 250px; border-radius: 14px; transform-style: preserve-3d; transition: transform .45s cubic-bezier(.4,.1,.2,1); }
+.card.flipped { transform: rotateY(180deg); }
+.face { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden; border-radius: 14px; background: var(--card); box-shadow: 0 10px 28px rgba(0,0,0,.35), 0 1px 0 rgba(255,255,255,.4) inset; display: flex; flex-direction: column; overflow: hidden; }
+.face::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 10px; background: var(--accent); }
+.face::after { content: ''; position: absolute; left: 34px; top: 10px; bottom: 0; width: 1px; background: var(--rule); }
+.face-inner { flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 26px 22px 34px 48px; text-align: left; position: relative; overflow-y: auto; }
+.punch { position: absolute; left: 14px; top: 34px; width: 9px; height: 9px; border-radius: 50%; background: var(--bg); }
+.term { font-family: 'IBM Plex Mono', monospace; font-size: 28px; font-weight: 700; color: var(--ink); line-height: 1.2; word-break: break-word; padding-right: 30px; }
+.def { font-size: 17px; font-weight: 500; color: var(--ink); line-height: 1.4; }
+.ex { margin-top: 10px; font-size: 13.5px; font-style: italic; color: var(--ink-soft); line-height: 1.4; }
+.face-tag { position: absolute; bottom: 12px; left: 48px; right: 16px; font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: .1em; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.back { transform: rotateY(180deg); background: var(--card-back); }
+.hint { text-align: center; font-size: 12px; color: var(--on-bg-soft); margin: -4px 0 16px; }
+
+.speak-btn {
+  position: absolute; top: 18px; right: 14px; z-index: 2;
+  width: 30px; height: 30px; border-radius: 50%;
+  background: rgba(47,111,143,.12); border: 1.5px solid rgba(47,111,143,.35);
+  color: var(--accent); font-size: 14px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; padding: 0;
+}
+.speak-btn:hover { background: rgba(47,111,143,.22); }
+.speak-btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.speak-btn.inline { position: static; display: inline-flex; margin-left: 8px; vertical-align: middle; }
+
+.assess { display: flex; gap: 10px; }
+.assess button { flex: 1; border: none; border-radius: 10px; font-size: 14px; font-weight: 700; padding: 13px 8px; cursor: pointer; }
+.btn-no { background: var(--needs-soft); color: var(--needs); }
+.btn-yes { background: var(--success-soft); color: var(--success); }
+.assess button:disabled { opacity: .45; cursor: default; }
+
+/* ===== quiz & type ===== */
+.prompt { background: var(--card); border-radius: 14px; box-shadow: 0 10px 28px rgba(0,0,0,.35); padding: 28px 22px 24px; text-align: center; margin-bottom: 16px; position: relative; color: var(--ink); }
+.prompt::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 10px; background: var(--accent); border-radius: 14px 14px 0 0; }
+.eyebrow { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--ink-soft); letter-spacing: .08em; }
+.prompt .term { padding-right: 0; margin-top: 6px; font-size: 26px; }
+.prompt .def { margin-top: 8px; }
+.prompt .ex { text-align: center; }
+.opts { display: flex; flex-direction: column; gap: 9px; }
+.opt { font-size: 14px; font-weight: 600; background: rgba(255,255,255,.07); border: 1.5px solid rgba(255,255,255,.18); color: var(--on-bg); border-radius: 10px; padding: 12px 15px; text-align: left; cursor: pointer; line-height: 1.35; }
+.opt.correct { background: var(--success-soft); border-color: var(--success); color: var(--success); }
+.opt.wrong { background: var(--danger-soft); border-color: var(--danger); color: #8a2f20; }
+.opt:disabled { cursor: default; }
+
+.type-input-row { display: flex; gap: 8px; margin-bottom: 10px; }
+.type-input { flex: 1; min-width: 0; font-family: 'IBM Plex Mono', monospace; font-size: 17px; padding: 13px 14px; border-radius: 10px; border: 1.5px solid rgba(255,255,255,.22); background: rgba(255,255,255,.07); color: #FBF6EA; }
+.type-input::placeholder { color: #9aa9b4; }
+.type-check { font-weight: 700; font-size: 14px; background: var(--accent); color: #fff; border: none; border-radius: 10px; padding: 0 18px; cursor: pointer; }
+.type-actions { display: flex; justify-content: flex-end; margin-bottom: 8px; }
+.linkish { background: none; border: none; color: var(--on-bg-soft); font-size: 12.5px; text-decoration: underline; cursor: pointer; padding: 4px 0; }
+.feedback { margin-top: 4px; font-size: 14px; border-radius: 10px; padding: 12px; text-align: left; }
+.fb-ok { background: var(--success-soft); color: var(--success); }
+.fb-no { background: var(--danger-soft); color: #8a2f20; }
+.fb-term { font-family: 'IBM Plex Mono', monospace; font-weight: 700; }
+.next-btn { margin-top: 10px; width: 100%; }
+
+.empty { text-align: center; background: rgba(255,255,255,.05); border: 1px dashed rgba(255,255,255,.2); border-radius: 12px; padding: 22px 16px; color: var(--on-bg-soft); font-size: 13.5px; line-height: 1.5; }
+.empty .btn { margin-top: 12px; }
+
+/* ===== words manager ===== */
+.section-h { font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 700; letter-spacing: .12em; color: var(--on-bg-soft); margin: 22px 0 10px; text-transform: uppercase; display: flex; justify-content: space-between; align-items: center; }
+.search { width: 100%; font-size: 14px; padding: 10px 13px; border-radius: 10px; border: 1.5px solid rgba(255,255,255,.2); background: rgba(255,255,255,.07); color: #FBF6EA; margin-bottom: 10px; font-family: inherit; }
+.search::placeholder { color: #9aa9b4; }
+.wlist { display: flex; flex-direction: column; gap: 8px; }
+.witem { background: var(--card); color: var(--ink); border-radius: 11px; padding: 12px 14px; box-shadow: 0 4px 12px rgba(0,0,0,.25); }
+.witem-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.witem-term { font-family: 'IBM Plex Mono', monospace; font-weight: 700; font-size: 15.5px; word-break: break-word; }
+.witem-def { font-size: 13.5px; margin-top: 3px; line-height: 1.4; }
+.witem-ex { font-size: 12.5px; font-style: italic; color: var(--ink-soft); margin-top: 4px; line-height: 1.4; }
+.witem-meta { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; gap: 8px; flex-wrap: wrap; }
+.chip { font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; font-weight: 600; padding: 3px 8px; border-radius: 10px; }
+.chip-l { background: var(--needs-soft); color: var(--needs); }
+.chip-k { background: var(--success-soft); color: var(--success); }
+.chip-d { background: #E6EEF2; color: var(--accent-deep); }
+.mini { display: flex; gap: 6px; }
+.mini button { font-size: 12px; font-weight: 600; border-radius: 7px; padding: 5px 10px; cursor: pointer; border: 1px solid var(--rule); background: #fff; color: var(--ink-soft); }
+.mini button.del { color: var(--danger); }
+.mini button.yes { background: var(--danger); color: #fff; border-color: var(--danger); }
+.count { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--on-bg-soft); }
+
+.decks { display: flex; flex-direction: column; gap: 6px; }
+.ditem { display: flex; align-items: center; justify-content: space-between; gap: 8px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12); border-radius: 10px; padding: 9px 12px; }
+.ditem-name { font-weight: 600; font-size: 14px; word-break: break-word; }
+.ditem input { flex: 1; font-size: 14px; padding: 6px 9px; border-radius: 7px; border: 1px solid var(--rule); font-family: inherit; min-width: 0; }
+.ditem .mini button { background: rgba(255,255,255,.1); color: var(--on-bg); border-color: rgba(255,255,255,.2); }
+.ditem .mini button.del { color: #F2A391; }
+.ditem .mini button.yes { background: var(--danger); color: #fff; }
+
+.toast { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%) translateY(20px); background: #1f2a33; color: #fff; font-size: 13px; padding: 10px 16px; border-radius: 10px; opacity: 0; transition: all .25s; pointer-events: none; box-shadow: 0 6px 18px rgba(0,0,0,.35); max-width: calc(100% - 32px); }
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+.note { margin-top: 22px; font-size: 11.5px; color: var(--on-bg-soft); text-align: center; line-height: 1.6; }
+@media (max-width: 380px) { .term { font-size: 23px; } .card { height: 240px; } .tab { font-size: 12px; } }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="hd">
+    <div class="hd-label">vocabulary · english</div>
+    <h1>card file<span class="dot">.</span></h1>
+  </div>
+  <div id="app"><div class="loading">Loading…</div></div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+"use strict";
+
+// ====== SETTINGS — same Supabase project as Kartotéka, separate tables (en_decks, en_cards) ======
+var SUPABASE_URL = "https://hivxajqgvygluwhdwxuw.supabase.co";
+var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhpdnhhanFndnlnbHV3aGR3eHV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA4NTIyMzQsImV4cCI6MjEwNjQyODIzNH0.O3B0BzvW8zpTvAzTTbQdb-iDfFFu-fRN2xlL7MYvpJM";
+
+var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+var app = document.getElementById("app");
+
+/* ============ STATE ============ */
+var DECKS = [];          // {id, name}
+var CARDS = [];          // {id, deck_id, term, definition, example, box}
+var curDeck = "all";     // "all" or deck id
+var direction = "term";  // "term" = word → meaning, "def" = meaning → word
+var activeMode = "cards";
+var currentUser = null;
+var LAST_DECK_KEY = "cardfile.lastDeck";
+
+/* ============ HELPERS ============ */
+function esc(s){ var d = document.createElement("div"); d.textContent = s == null ? "" : s; return d.innerHTML; }
+function $(id){ return document.getElementById(id); }
+var toastTimer = null;
+function toast(text){
+  var t = $("toast"); t.textContent = text; t.classList.add("show");
+  clearTimeout(toastTimer); toastTimer = setTimeout(function(){ t.classList.remove("show"); }, 1800);
+}
+function deckName(id){ var d = DECKS.find(function(x){ return x.id === id; }); return d ? d.name : ""; }
+function storeGet(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }
+function storeSet(k, v){ try { localStorage.setItem(k, v); } catch(e){} }
+
+// for answer checking: case, spacing, punctuation and a leading "to " don't matter
+function norm(s){
+  return (s || "").toLowerCase()
+    .replace(/[’‘`]/g, "'")
+    .replace(/[.,!?;:"()\[\]'…-]/g, " ")
+    .replace(/\s+/g, " ").trim()
+    .replace(/^to /, "");
+}
+// hide the word inside its own example sentence
+function maskExample(example, term){
+  if (!example || !term) return null;
+  var t = term.trim().replace(/^to\s+/i, "");
+  if (!t) return null;
+  var re = new RegExp(t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "ig");
+  if (!re.test(example)) return null;
+  return example.replace(re, "_____");
+}
+
+/* ============ SPEECH ============ */
+var synth = window.speechSynthesis || null;
+var enVoice = null;
+function pickVoice(){
+  if (!synth) return;
+  var v = synth.getVoices() || [];
+  enVoice = v.find(function(x){ return /^en[-_]GB/i.test(x.lang); })
+         || v.find(function(x){ return /^en[-_]US/i.test(x.lang); })
+         || v.find(function(x){ return /^en/i.test(x.lang); }) || null;
+}
+if (synth) { pickVoice(); synth.onvoiceschanged = pickVoice; }
+function speak(text){
+  if (!synth) return;
+  try { synth.cancel(); var u = new SpeechSynthesisUtterance(text); u.lang = enVoice ? enVoice.lang : "en-GB"; if (enVoice) u.voice = enVoice; u.rate = 0.95; synth.speak(u); } catch(e){}
+}
+function speakBtn(text, inline){
+  var b = document.createElement("button");
+  b.type = "button"; b.className = "speak-btn" + (inline ? " inline" : "");
+  b.setAttribute("aria-label", "Play pronunciation"); b.textContent = "🔊";
+  b.addEventListener("click", function(e){ e.stopPropagation(); e.preventDefault(); speak(text); });
+  return b;
+}
+
+/* ============ AUTH ============ */
+function renderAuth(mode, msg){
+  mode = mode || "login";
+  var login = mode === "login";
+  app.innerHTML =
+    '<div class="panel">' +
+      '<div class="panel-title">' + (login ? "Log in" : "Sign up") + '</div>' +
+      '<div class="panel-sub">' + (login ? "Use the same account as in Kartotéka." : "Create an account — your words and progress go with you to every device.") + '</div>' +
+      (msg ? '<div class="msg ' + msg.type + '">' + esc(msg.text) + '</div>' : '') +
+      '<div class="field"><label for="email">E-mail</label><input id="email" type="email" autocomplete="email"></div>' +
+      '<div class="field"><label for="pass">Password</label><input id="pass" type="password" autocomplete="' + (login ? "current-password" : "new-password") + '"></div>' +
+      '<button class="btn btn-primary btn-wide" id="submitBtn">' + (login ? "Log in" : "Sign up") + '</button>' +
+      '<div class="auth-switch">' + (login ? 'No account yet? <button id="switchBtn">Sign up</button>' : 'Already have an account? <button id="switchBtn">Log in</button>') + '</div>' +
+    '</div>';
+  $("switchBtn").addEventListener("click", function(){ renderAuth(login ? "signup" : "login"); });
+  function submit(){
+    var email = $("email").value.trim(), pass = $("pass").value;
+    if (!email || !pass) { renderAuth(mode, {type:"err", text:"Please fill in both e-mail and password."}); return; }
+    var btn = $("submitBtn"); btn.disabled = true; btn.textContent = "One moment…";
+    var action = login ? sb.auth.signInWithPassword({ email: email, password: pass }) : sb.auth.signUp({ email: email, password: pass });
+    action.then(function(res){
+      if (res.error) { renderAuth(mode, {type:"err", text: authError(res.error.message)}); return; }
+      if (!login && res.data && res.data.user && !res.data.session) {
+        renderAuth("login", {type:"ok", text:"Account created. If e-mail confirmation is required, check your inbox, then log in."}); return;
+      }
+      boot();
+    });
+  }
+  $("submitBtn").addEventListener("click", submit);
+  $("pass").addEventListener("keydown", function(e){ if (e.key === "Enter") submit(); });
+}
+function authError(m){
+  if (/already registered/i.test(m)) return "This e-mail is already registered — try logging in.";
+  if (/invalid login credentials/i.test(m)) return "Wrong e-mail or password.";
+  if (/password.*(6|least)/i.test(m)) return "The password must be at least 6 characters long.";
+  return m;
+}
+
+/* ============ DATA ============ */
+function loadData(){
+  app.innerHTML = '<div class="loading">Loading your words…</div>';
+  Promise.all([
+    sb.from("en_decks").select("id, name, created_at").order("created_at"),
+    sb.from("en_cards").select("id, deck_id, term, definition, example, box, created_at").order("created_at", { ascending: false })
+  ]).then(function(r){
+    if (r[0].error || r[1].error) {
+      console.error(r[0].error || r[1].error);
+      app.innerHTML = '<div class="loading">Could not load your data. Try refreshing the page.</div>'; return;
+    }
+    DECKS = r[0].data || []; CARDS = r[1].data || [];
+    var last = storeGet(LAST_DECK_KEY);
+    curDeck = (last && (last === "all" || DECKS.some(function(d){ return d.id === last; }))) ? last : "all";
+    if (!CARDS.length) activeMode = "words";
+    renderTrainer();
+  });
+}
+
+function setBox(card, box){
+  card.box = box; renderStats();
+  sb.from("en_cards").update({ box: box, updated_at: new Date().toISOString() }).eq("id", card.id)
+    .then(function(res){ if (res.error) console.error("Could not save progress:", res.error.message); });
+}
+function bumpUp(c){ setBox(c, Math.min(3, (c.box || 1) + 1)); }
+function bumpDown(c){ setBox(c, 1); }
+
+function pool(){ return curDeck === "all" ? CARDS : CARDS.filter(function(c){ return c.deck_id === curDeck; }); }
+var lastPickedId = null;
+function weightedPick(){
+  var p = pool(); if (!p.length) return null;
+  var cand = p.length > 1 ? p.filter(function(c){ return c.id !== lastPickedId; }) : p;
+  var w = {1:5, 2:2, 3:1}, bag = [];
+  cand.forEach(function(c){ var n = w[c.box] || 1; for (var i=0;i<n;i++) bag.push(c); });
+  var pick = bag[Math.floor(Math.random()*bag.length)];
+  lastPickedId = pick.id;
+  return pick;
+}
+function renderStats(){
+  var p = pool(), l = 0, k = 0;
+  p.forEach(function(c){ if ((c.box||1) >= 3) k++; else l++; });
+  if ($("nLearning")) $("nLearning").textContent = l;
+  if ($("nKnown")) $("nKnown").textContent = k;
+}
+
+/* ============ SHELL ============ */
+function renderTrainer(){
+  app.innerHTML =
+    '<div class="topbar"><div class="who">' + esc(currentUser.email) + '</div><button class="logout" id="logoutBtn">Log out</button></div>' +
+    '<div class="filter-row"><div class="deck-pill">🗂️<select id="deckSelect" aria-label="Choose a set"></select></div></div>' +
+    '<div class="dir-row" id="dirRow"><div class="dir-toggle" role="group" aria-label="Direction">' +
+      '<button class="dir-btn" id="dirTerm">word → meaning</button>' +
+      '<button class="dir-btn" id="dirDef">meaning → word</button>' +
+    '</div></div>' +
+    '<div class="tabs" role="tablist" aria-label="Mode">' +
+      '<button class="tab" role="tab" data-mode="cards">Cards</button>' +
+      '<button class="tab" role="tab" data-mode="quiz">Quiz</button>' +
+      '<button class="tab" role="tab" data-mode="type">Type</button>' +
+      '<button class="tab" role="tab" data-mode="words">My words</button>' +
+    '</div>' +
+    '<div class="stats" id="statsRow">' +
+      '<div class="stat stat-learning"><div class="stat-n" id="nLearning">0</div><div class="stat-lbl">learning</div></div>' +
+      '<div class="stat stat-known"><div class="stat-n" id="nKnown">0</div><div class="stat-lbl">known</div></div>' +
+    '</div>' +
+    '<div id="modeBox"></div>' +
+    '<div class="note">Your words and progress are saved to your account.</div>';
+
+  $("logoutBtn").addEventListener("click", function(){ sb.auth.signOut().then(boot); });
+  $("deckSelect").addEventListener("change", function(e){ curDeck = e.target.value; storeSet(LAST_DECK_KEY, curDeck); renderStats(); refreshMode(); });
+  $("dirTerm").addEventListener("click", function(){ direction = "term"; syncDir(); refreshMode(); });
+  $("dirDef").addEventListener("click", function(){ direction = "def"; syncDir(); refreshMode(); });
+  document.querySelectorAll(".tab").forEach(function(t){
+    t.addEventListener("click", function(){ activeMode = t.dataset.mode; syncTabs(); refreshMode(); });
+  });
+  populateDeckSelect(); syncDir(); syncTabs(); renderStats(); refreshMode();
+}
+function populateDeckSelect(){
+  var s = $("deckSelect"); if (!s) return;
+  s.innerHTML = '<option value="all">All words (' + CARDS.length + ')</option>' +
+    DECKS.map(function(d){
+      var n = CARDS.filter(function(c){ return c.deck_id === d.id; }).length;
+      return '<option value="' + esc(d.id) + '">' + esc(d.name) + ' (' + n + ')</option>';
+    }).join("");
+  if (curDeck !== "all" && !DECKS.some(function(d){ return d.id === curDeck; })) curDeck = "all";
+  s.value = curDeck;
+}
+function syncDir(){
+  $("dirTerm").setAttribute("aria-pressed", direction === "term" ? "true" : "false");
+  $("dirDef").setAttribute("aria-pressed", direction === "def" ? "true" : "false");
+}
+function syncTabs(){
+  document.querySelectorAll(".tab").forEach(function(t){ t.setAttribute("aria-selected", t.dataset.mode === activeMode ? "true" : "false"); });
+  // direction doesn't apply to Type (always meaning → word) or to the word list
+  $("dirRow").style.display = (activeMode === "cards" || activeMode === "quiz") ? "" : "none";
+}
+// pending "next card" timers only fire if the user hasn't switched mode/set/direction meanwhile
+var modeToken = 0;
+function later(fn, ms){ var tok = modeToken; setTimeout(function(){ if (tok === modeToken) fn(); }, ms); }
+function refreshMode(){
+  modeToken++;
+  if (activeMode === "cards") renderCard();
+  else if (activeMode === "quiz") renderQuiz();
+  else if (activeMode === "type") renderType();
+  else renderWords();
+}
+function emptyState(box, text){
+  box.innerHTML = '<div class="empty">' + text + '<br><button class="btn btn-primary" id="goAdd">Add words</button></div>';
+  $("goAdd").addEventListener("click", function(){ activeMode = "words"; syncTabs(); refreshMode(); });
+}
+
+/* ---------- CARDS ---------- */
+function renderCard(){
+  var box = $("modeBox"), c = weightedPick();
+  if (!c) { emptyState(box, "No words in this set yet."); return; }
+  var termFace = '<div class="term">' + esc(c.term) + '</div>';
+  var defFace = '<div class="def">' + esc(c.definition) + '</div>';
+  var exHtml = c.example ? '<div class="ex">' + esc(c.example) + '</div>' : '';
+  var front = direction === "term" ? termFace : defFace;
+  var back = direction === "term" ? defFace + exHtml : termFace + exHtml;
+  box.innerHTML =
+    '<div class="stage"><div class="card-btn" id="flipBtn" role="button" tabindex="0" aria-label="Flip the card">' +
+      '<div class="card" id="cardEl">' +
+        '<div class="face front"><div class="punch"></div><div class="face-inner">' + front + '</div><div class="face-tag">tap to flip</div></div>' +
+        '<div class="face back"><div class="punch"></div><div class="face-inner">' + back + '</div><div class="face-tag">' + esc(deckName(c.deck_id)) + '</div></div>' +
+      '</div></div></div>' +
+    '<div class="hint">Flip the card, then rate how well you knew it.</div>' +
+    '<div class="assess"><button class="btn-no" id="btnNo" disabled>😕 Not yet</button><button class="btn-yes" id="btnYes" disabled>✓ Knew it</button></div>';
+  var cardEl = $("cardEl"), flip = $("flipBtn");
+  function doFlip(){
+    cardEl.classList.toggle("flipped");
+    var f = cardEl.classList.contains("flipped");
+    $("btnYes").disabled = !f; $("btnNo").disabled = !f;
+  }
+  flip.addEventListener("click", doFlip);
+  flip.addEventListener("keydown", function(e){ if (e.key === "Enter" || e.key === " ") { e.preventDefault(); doFlip(); } });
+  $("btnYes").addEventListener("click", function(){ bumpUp(c); later(renderCard, 180); });
+  $("btnNo").addEventListener("click", function(){ bumpDown(c); later(renderCard, 180); });
+  if (synth) {
+    var faceSel = direction === "term" ? ".front .face-inner" : ".back .face-inner";
+    var f = cardEl.querySelector(faceSel); if (f) f.appendChild(speakBtn(c.term, false));
+  }
+}
+
+/* ---------- QUIZ ---------- */
+function renderQuiz(){
+  var box = $("modeBox"), p = pool();
+  if (p.length < 2) { emptyState(box, "The quiz needs at least 2 words in this set."); return; }
+  var c = weightedPick(), toDef = direction === "term";
+  var label = function(x){ return toDef ? x.definition : x.term; };
+  var right = label(c);
+  // up to 3 distractors with a different text than the right answer
+  var seen = {}; seen[norm(right)] = true;
+  var others = p.filter(function(x){ return x.id !== c.id; }).sort(function(){ return Math.random() - .5; });
+  var opts = [c];
+  for (var i = 0; i < others.length && opts.length < 4; i++) {
+    var k = norm(label(others[i])); if (!seen[k]) { seen[k] = true; opts.push(others[i]); }
+  }
+  opts.sort(function(){ return Math.random() - .5; });
+  var mask = toDef ? null : maskExample(c.example, c.term);
+  box.innerHTML =
+    '<div class="prompt"><div class="eyebrow">' + (toDef ? "what does it mean?" : "which word is it?") + '</div>' +
+      (toDef ? '<div class="term" id="qWord">' + esc(c.term) + '</div>' : '<div class="def">' + esc(c.definition) + '</div>' + (mask ? '<div class="ex">' + esc(mask) + '</div>' : '')) +
+    '</div><div class="opts" id="opts"></div>';
+  if (synth && toDef) $("qWord").appendChild(speakBtn(c.term, true));
+  var optsEl = $("opts");
+  opts.forEach(function(o){
+    var b = document.createElement("button");
+    b.className = "opt"; b.textContent = label(o); b.dataset.id = o.id;
+    b.addEventListener("click", function(){
+      var all = optsEl.querySelectorAll(".opt");
+      all.forEach(function(x){ x.disabled = true; });
+      if (o.id === c.id) { b.classList.add("correct"); bumpUp(c); later(renderQuiz, 850); }
+      else {
+        b.classList.add("wrong");
+        all.forEach(function(x){ if (x.dataset.id === c.id) x.classList.add("correct"); });
+        bumpDown(c); later(renderQuiz, 1600);
+      }
+    });
+    optsEl.appendChild(b);
+  });
+}
+
+/* ---------- TYPE ---------- */
+function renderType(){
+  var box = $("modeBox"), c = weightedPick();
+  if (!c) { emptyState(box, "No words in this set yet."); return; }
+  var mask = maskExample(c.example, c.term);
+  box.innerHTML =
+    '<div class="prompt"><div class="eyebrow">type the word</div><div class="def">' + esc(c.definition) + '</div>' + (mask ? '<div class="ex">' + esc(mask) + '</div>' : '') + '</div>' +
+    '<div class="type-input-row"><label class="sr-only" for="tIn">Your answer</label><input class="type-input" id="tIn" type="text" placeholder="…" autocomplete="off" autocapitalize="off" spellcheck="false"><button class="type-check" id="tBtn">Check</button></div>' +
+    '<div class="type-actions"><button class="linkish" id="tSkip">I don’t know — show me</button></div>' +
+    '<div id="tFb"></div>';
+  var input = $("tIn"); input.focus();
+  var done = false;
+  function finish(ok){
+    done = true; input.disabled = true; $("tBtn").disabled = true; $("tSkip").style.display = "none";
+    $("tFb").innerHTML =
+      '<div class="feedback ' + (ok ? "fb-ok" : "fb-no") + '">' + (ok ? "✓ Correct — " : "The answer is: ") +
+      '<span class="fb-term" id="fbTerm">' + esc(c.term) + '</span>' +
+      (c.example ? '<div class="ex" style="margin-top:6px">' + esc(c.example) + '</div>' : '') + '</div>' +
+      '<button class="btn btn-primary next-btn" id="tNext">Next →</button>';
+    if (synth) $("fbTerm").appendChild(speakBtn(c.term, true));
+    if (ok) bumpUp(c); else bumpDown(c);
+    $("tNext").addEventListener("click", renderType);
+    $("tNext").focus();
+  }
+  function check(){ if (done) return; var v = input.value; if (!norm(v)) return; finish(norm(v) === norm(c.term)); }
+  $("tBtn").addEventListener("click", check);
+  $("tSkip").addEventListener("click", function(){ if (!done) finish(false); });
+  input.addEventListener("keydown", function(e){ if (e.key === "Enter") { e.preventDefault(); check(); } });
+}
+
+/* ---------- MY WORDS ---------- */
+var searchText = "";
+function deckOptions(selectedId){
+  return DECKS.map(function(d){ return '<option value="' + esc(d.id) + '"' + (d.id === selectedId ? " selected" : "") + '>' + esc(d.name) + '</option>'; }).join("") +
+    '<option value="__new">+ New set…</option>';
+}
+function renderWords(){
+  var box = $("modeBox");
+  var defaultDeck = curDeck !== "all" ? curDeck : (storeGet("cardfile.addDeck") || (DECKS[0] && DECKS[0].id) || "__new");
+  if (defaultDeck !== "__new" && !DECKS.some(function(d){ return d.id === defaultDeck; })) defaultDeck = DECKS[0] ? DECKS[0].id : "__new";
+
+  box.innerHTML =
+    '<div class="panel" id="addPanel">' +
+      '<div class="panel-title">Add a word</div>' +
+      '<div class="panel-sub">Word or phrase, an explanation in English, and optionally an example.</div>' +
+      '<div class="field"><label for="aTerm">Word / phrase</label><input id="aTerm" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="e.g. reluctant"></div>' +
+      '<div class="field"><label for="aDef">Meaning</label><textarea id="aDef" placeholder="e.g. not willing to do something"></textarea></div>' +
+      '<div class="field"><label for="aEx">Example <span class="opt-lbl">(optional)</span></label><textarea id="aEx" placeholder="e.g. She was reluctant to leave."></textarea></div>' +
+      '<div class="field"><label for="aDeck">Set</label><select id="aDeck">' + deckOptions(defaultDeck) + '</select></div>' +
+      '<div class="field" id="newDeckField" style="display:none"><label for="aNewDeck">New set name</label><input id="aNewDeck" type="text" placeholder="e.g. Work, Phrasal verbs"></div>' +
+      '<div id="addMsg"></div>' +
+      '<button class="btn btn-primary btn-wide" id="addBtn">Add word</button>' +
+    '</div>' +
+    '<div class="section-h"><span>Words' + (curDeck === "all" ? "" : " · " + esc(deckName(curDeck))) + '</span><span class="count" id="wCount"></span></div>' +
+    '<input class="search" id="wSearch" type="search" placeholder="Search…" value="' + esc(searchText) + '" aria-label="Search words">' +
+    '<div class="wlist" id="wList"></div>' +
+    '<div class="section-h"><span>Sets</span></div>' +
+    '<div class="decks" id="dList"></div>';
+
+  var sel = $("aDeck");
+  function syncNewDeck(){ $("newDeckField").style.display = sel.value === "__new" ? "" : "none"; }
+  sel.value = defaultDeck; syncNewDeck();
+  sel.addEventListener("change", function(){ syncNewDeck(); if (sel.value === "__new") $("aNewDeck").focus(); });
+
+  $("addBtn").addEventListener("click", addWord);
+  $("aTerm").addEventListener("keydown", function(e){ if (e.key === "Enter") { e.preventDefault(); $("aDef").focus(); } });
+  $("aTerm").addEventListener("input", function(){ var b = $("addBtn"); if (b.dataset.confirmDup) { delete b.dataset.confirmDup; b.textContent = "Add word"; $("addMsg").innerHTML = ""; } });
+  $("wSearch").addEventListener("input", function(e){ searchText = e.target.value; renderWordList(); });
+  renderWordList(); renderDeckList();
+}
+
+function ensureDeck(selectValue, newName){
+  if (selectValue !== "__new") return Promise.resolve(selectValue);
+  var name = (newName || "").trim();
+  if (!name) return Promise.reject(new Error("Give the new set a name."));
+  var existing = DECKS.find(function(d){ return d.name.toLowerCase() === name.toLowerCase(); });
+  if (existing) return Promise.resolve(existing.id);
+  return sb.from("en_decks").insert({ name: name }).select("id, name, created_at").single().then(function(res){
+    if (res.error) throw new Error(res.error.message);
+    DECKS.push(res.data); return res.data.id;
+  });
+}
+
+function addWord(){
+  var term = $("aTerm").value.trim(), def = $("aDef").value.trim(), ex = $("aEx").value.trim();
+  var msg = $("addMsg");
+  if (!term || !def) { msg.innerHTML = '<div class="msg err">Fill in the word and its meaning.</div>'; return; }
+  var dup = CARDS.find(function(c){ return norm(c.term) === norm(term); });
+  if (dup && !$("addBtn").dataset.confirmDup) {
+    msg.innerHTML = '<div class="msg err">“' + esc(dup.term) + '” is already in “' + esc(deckName(dup.deck_id)) + '”. Click “Add anyway” to add it again.</div>';
+    $("addBtn").dataset.confirmDup = "1"; $("addBtn").textContent = "Add anyway"; return;
+  }
+  var btn = $("addBtn"); btn.disabled = true; msg.innerHTML = "";
+  ensureDeck($("aDeck").value, $("aNewDeck").value).then(function(deckId){
+    return sb.from("en_cards").insert({ deck_id: deckId, term: term, definition: def, example: ex || null })
+      .select("id, deck_id, term, definition, example, box, created_at").single().then(function(res){
+        if (res.error) throw new Error(res.error.message);
+        CARDS.unshift(res.data);
+        storeSet("cardfile.addDeck", deckId);
+        toast("Added: " + term);
+        populateDeckSelect(); renderStats();
+        renderWords();
+        $("aDeck").value = deckId; $("newDeckField").style.display = "none";
+        $("aTerm").focus();
+      });
+  }).catch(function(err){
+    btn.disabled = false;
+    msg.innerHTML = '<div class="msg err">' + esc(err.message) + '</div>';
+  });
+}
+
+function renderWordList(){
+  var list = $("wList"); if (!list) return;
+  var q = norm(searchText);
+  var items = pool().filter(function(c){ return !q || norm(c.term + " " + c.definition + " " + (c.example||"")).indexOf(q) !== -1; });
+  $("wCount").textContent = items.length + (items.length === 1 ? " word" : " words");
+  if (!items.length) { list.innerHTML = '<div class="empty">' + (q ? "Nothing found." : "No words here yet — add the first one above.") + '</div>'; return; }
+  list.innerHTML = "";
+  items.forEach(function(c){ list.appendChild(wordItem(c)); });
+}
+
+function wordItem(c){
+  var el = document.createElement("div"); el.className = "witem";
+  function view(){
+    var known = (c.box||1) >= 3;
+    el.innerHTML =
+      '<div class="witem-top"><div class="witem-term">' + esc(c.term) + '</div></div>' +
+      '<div class="witem-def">' + esc(c.definition) + '</div>' +
+      (c.example ? '<div class="witem-ex">' + esc(c.example) + '</div>' : '') +
+      '<div class="witem-meta"><div class="mini">' +
+        '<span class="chip ' + (known ? "chip-k" : "chip-l") + '">' + (known ? "known" : "learning") + '</span>' +
+        (curDeck === "all" ? '<span class="chip chip-d">' + esc(deckName(c.deck_id)) + '</span>' : '') +
+      '</div><div class="mini" id="act"><button class="ed">Edit</button><button class="del">Delete</button></div></div>';
+    if (synth) el.querySelector(".witem-term").appendChild(speakBtn(c.term, true));
+    el.querySelector(".ed").addEventListener("click", edit);
+    el.querySelector(".del").addEventListener("click", function(){
+      var act = el.querySelector("#act");
+      act.innerHTML = '<span style="font-size:12px;color:var(--ink-soft);align-self:center">Delete?</span><button class="yes">Yes</button><button class="no">No</button>';
+      act.querySelector(".no").addEventListener("click", view);
+      act.querySelector(".yes").addEventListener("click", function(){
+        sb.from("en_cards").delete().eq("id", c.id).then(function(res){
+          if (res.error) { toast("Could not delete: " + res.error.message); return; }
+          CARDS = CARDS.filter(function(x){ return x.id !== c.id; });
+          populateDeckSelect(); renderStats(); renderWordList(); renderDeckList(); toast("Deleted");
+        });
+      });
+    });
+  }
+  function edit(){
+    el.innerHTML =
+      '<div class="field"><label>Word / phrase</label><input class="eTerm" type="text" autocomplete="off" spellcheck="false"></div>' +
+      '<div class="field"><label>Meaning</label><textarea class="eDef"></textarea></div>' +
+      '<div class="field"><label>Example <span class="opt-lbl">(optional)</span></label><textarea class="eEx"></textarea></div>' +
+      '<div class="field"><label>Set</label><select class="eDeck">' + DECKS.map(function(d){ return '<option value="' + esc(d.id) + '">' + esc(d.name) + '</option>'; }).join("") + '</select></div>' +
+      '<label style="display:flex;gap:7px;align-items:center;font-size:12.5px;color:var(--ink-soft);margin:2px 0 10px"><input type="checkbox" class="eReset"> Reset progress (back to “learning”)</label>' +
+      '<div class="eMsg"></div>' +
+      '<div class="row"><button class="btn btn-ghost eCancel">Cancel</button><button class="btn btn-primary eSave">Save</button></div>';
+    el.querySelector(".eTerm").value = c.term;
+    el.querySelector(".eDef").value = c.definition;
+    el.querySelector(".eEx").value = c.example || "";
+    el.querySelector(".eDeck").value = c.deck_id;
+    el.querySelector(".eCancel").addEventListener("click", view);
+    el.querySelector(".eSave").addEventListener("click", function(){
+      var t = el.querySelector(".eTerm").value.trim(), d = el.querySelector(".eDef").value.trim(), x = el.querySelector(".eEx").value.trim();
+      if (!t || !d) { el.querySelector(".eMsg").innerHTML = '<div class="msg err">Word and meaning can’t be empty.</div>'; return; }
+      var patch = { term: t, definition: d, example: x || null, deck_id: el.querySelector(".eDeck").value, updated_at: new Date().toISOString() };
+      if (el.querySelector(".eReset").checked) patch.box = 1;
+      this.disabled = true;
+      sb.from("en_cards").update(patch).eq("id", c.id).then(function(res){
+        if (res.error) { el.querySelector(".eMsg").innerHTML = '<div class="msg err">' + esc(res.error.message) + '</div>'; el.querySelector(".eSave").disabled = false; return; }
+        Object.assign(c, patch);
+        populateDeckSelect(); renderStats(); toast("Saved");
+        if (curDeck !== "all" && c.deck_id !== curDeck) { renderWordList(); renderDeckList(); } else { view(); renderDeckList(); }
+      });
+    });
+    el.querySelector(".eTerm").focus();
+  }
+  view();
+  return el;
+}
+
+function renderDeckList(){
+  var list = $("dList"); if (!list) return;
+  if (!DECKS.length) { list.innerHTML = '<div class="count" style="text-align:center">No sets yet — one is created with your first word.</div>'; return; }
+  list.innerHTML = "";
+  DECKS.forEach(function(d){
+    var el = document.createElement("div"); el.className = "ditem";
+    function view(){
+      var n = CARDS.filter(function(c){ return c.deck_id === d.id; }).length;
+      el.innerHTML = '<div><span class="ditem-name"></span> <span class="count">· ' + n + '</span></div><div class="mini"><button class="ren">Rename</button><button class="del">Delete</button></div>';
+      el.querySelector(".ditem-name").textContent = d.name;
+      el.querySelector(".ren").addEventListener("click", rename);
+      el.querySelector(".del").addEventListener("click", function(){
+        var mini = el.querySelector(".mini");
+        mini.innerHTML = '<span class="count" style="align-self:center">Delete set and its ' + n + ' words?</span><button class="yes">Yes</button><button class="no">No</button>';
+        mini.querySelector(".no").addEventListener("click", view);
+        mini.querySelector(".yes").addEventListener("click", function(){
+          sb.from("en_decks").delete().eq("id", d.id).then(function(res){
+            if (res.error) { toast("Could not delete: " + res.error.message); return; }
+            DECKS = DECKS.filter(function(x){ return x.id !== d.id; });
+            CARDS = CARDS.filter(function(c){ return c.deck_id !== d.id; });
+            if (curDeck === d.id) { curDeck = "all"; storeSet(LAST_DECK_KEY, "all"); }
+            populateDeckSelect(); renderStats(); renderWords(); toast("Set deleted");
+          });
+        });
+      });
+    }
+    function rename(){
+      el.innerHTML = '<input type="text" aria-label="Set name"><div class="mini"><button class="no">Cancel</button><button class="ok">Save</button></div>';
+      var inp = el.querySelector("input"); inp.value = d.name; inp.focus();
+      function save(){
+        var name = inp.value.trim(); if (!name || name === d.name) { view(); return; }
+        sb.from("en_decks").update({ name: name }).eq("id", d.id).then(function(res){
+          if (res.error) { toast("Could not rename: " + res.error.message); return; }
+          d.name = name; populateDeckSelect(); renderWords(); toast("Renamed");
+        });
+      }
+      el.querySelector(".ok").addEventListener("click", save);
+      el.querySelector(".no").addEventListener("click", view);
+      inp.addEventListener("keydown", function(e){ if (e.key === "Enter") save(); if (e.key === "Escape") view(); });
+    }
+    view(); list.appendChild(el);
+  });
+}
+
+/* ============ BOOT ============ */
+function boot(){
+  sb.auth.getUser().then(function(res){
+    currentUser = res.data && res.data.user ? res.data.user : null;
+    if (currentUser) loadData(); else renderAuth("login");
+  });
+}
+boot();
+})();
+</script>
+</body>
+</html>
