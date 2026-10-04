@@ -167,6 +167,20 @@ button { font-family: inherit; }
 .witem-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
 .witem-term { font-family: 'IBM Plex Mono', monospace; font-weight: 700; font-size: 15.5px; word-break: break-word; }
 .witem-def { font-size: 13.5px; margin-top: 3px; line-height: 1.4; }
+.term-row { display: flex; gap: 8px; }
+.term-row input { flex: 1; min-width: 0; }
+.lookup-btn { flex-shrink: 0; font-weight: 700; font-size: 13px; border-radius: 9px; padding: 0 14px; cursor: pointer; background: #E6EEF2; color: var(--accent-deep); border: 1.5px solid #c9dbe4; }
+.lookup-btn:disabled { opacity: .55; cursor: default; }
+.lk { margin: -2px 0 12px; }
+.lk-note { font-size: 12px; color: var(--ink-soft); margin-bottom: 6px; }
+.lk-list { display: flex; flex-direction: column; gap: 6px; max-height: 280px; overflow-y: auto; padding-right: 2px; }
+.lk-item { text-align: left; background: #fff; border: 1.5px solid var(--rule); border-radius: 9px; padding: 8px 10px; cursor: pointer; font-size: 13px; line-height: 1.4; color: var(--ink); }
+.lk-item:hover { border-color: var(--accent); }
+.lk-item.sel { border-color: var(--accent); background: #EEF5F8; }
+.lk-pos { font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; font-weight: 700; color: var(--accent); margin-right: 6px; }
+.lk-ex { display: block; font-style: italic; color: var(--ink-soft); font-size: 12px; margin-top: 3px; }
+.lk-src { font-size: 10.5px; color: var(--ink-soft); margin-top: 6px; }
+.lk-src a { color: inherit; }
 .witem-ex { font-size: 12.5px; font-style: italic; color: var(--ink-soft); margin-top: 4px; line-height: 1.4; }
 .witem-meta { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; gap: 8px; flex-wrap: wrap; }
 .chip { font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; font-weight: 600; padding: 3px 8px; border-radius: 10px; }
@@ -544,7 +558,8 @@ function renderWords(){
     '<div class="panel" id="addPanel">' +
       '<div class="panel-title">Add a word</div>' +
       '<div class="panel-sub">Word or phrase, an explanation in English, and optionally an example.</div>' +
-      '<div class="field"><label for="aTerm">Word / phrase</label><input id="aTerm" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="e.g. reluctant"></div>' +
+      '<div class="field"><label for="aTerm">Word / phrase</label><div class="term-row"><input id="aTerm" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="e.g. reluctant"><button class="lookup-btn" id="lookupBtn" type="button">Look up</button></div></div>' +
+      '<div class="lk" id="lookupBox"></div>' +
       '<div class="field"><label for="aDef">Meaning</label><textarea id="aDef" placeholder="e.g. not willing to do something"></textarea></div>' +
       '<div class="field"><label for="aEx">Example <span class="opt-lbl">(optional)</span></label><textarea id="aEx" placeholder="e.g. She was reluctant to leave."></textarea></div>' +
       '<div class="field"><label for="aDeck">Set</label><select id="aDeck">' + deckOptions(defaultDeck) + '</select></div>' +
@@ -564,10 +579,73 @@ function renderWords(){
   sel.addEventListener("change", function(){ syncNewDeck(); if (sel.value === "__new") $("aNewDeck").focus(); });
 
   $("addBtn").addEventListener("click", addWord);
-  $("aTerm").addEventListener("keydown", function(e){ if (e.key === "Enter") { e.preventDefault(); $("aDef").focus(); } });
-  $("aTerm").addEventListener("input", function(){ var b = $("addBtn"); if (b.dataset.confirmDup) { delete b.dataset.confirmDup; b.textContent = "Add word"; $("addMsg").innerHTML = ""; } });
+  $("aTerm").addEventListener("keydown", function(e){ if (e.key === "Enter") { e.preventDefault(); lookup(); } });
+  $("lookupBtn").addEventListener("click", lookup);
+  $("aTerm").addEventListener("input", function(){ if ($("lookupBox").innerHTML) { lookupSeq++; $("lookupBox").innerHTML = ""; $("lookupBtn").disabled = false; $("lookupBtn").textContent = "Look up"; } var b = $("addBtn"); if (b.dataset.confirmDup) { delete b.dataset.confirmDup; b.textContent = "Add word"; $("addMsg").innerHTML = ""; } });
   $("wSearch").addEventListener("input", function(e){ searchText = e.target.value; renderWordList(); });
   renderWordList(); renderDeckList();
+}
+
+/* ---------- DICTIONARY LOOKUP (free, no key) ---------- */
+// 1) freedictionaryapi.com (Wiktionary, handles phrases)  2) dictionaryapi.dev as a fallback
+function fetchJSON(url){
+  return fetch(url).then(function(r){ if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); });
+}
+function senseList(term){
+  var w = encodeURIComponent(term.trim().replace(/^to\s+/i, ""));
+  return fetchJSON("https://freedictionaryapi.com/api/v1/entries/en/" + w).then(function(d){
+    var out = [];
+    (d.entries || []).forEach(function(en){
+      (en.senses || []).forEach(function(s){
+        if (s.definition) out.push({ pos: en.partOfSpeech || "", def: s.definition, ex: (s.examples && s.examples[0]) || "" });
+      });
+    });
+    if (!out.length) throw new Error("empty");
+    return { items: out, src: "Wiktionary", url: "https://en.wiktionary.org/wiki/" + w };
+  }).catch(function(){
+    return fetchJSON("https://api.dictionaryapi.dev/api/v2/entries/en/" + w).then(function(d){
+      var out = [];
+      (Array.isArray(d) ? d : []).forEach(function(e){
+        (e.meanings || []).forEach(function(m){
+          (m.definitions || []).forEach(function(x){ if (x.definition) out.push({ pos: m.partOfSpeech || "", def: x.definition, ex: x.example || "" }); });
+        });
+      });
+      if (!out.length) throw new Error("empty");
+      return { items: out, src: "Wiktionary (via dictionaryapi.dev)", url: "https://en.wiktionary.org/wiki/" + w };
+    });
+  });
+}
+var lookupSeq = 0;
+function lookup(){
+  var term = $("aTerm").value.trim(), box = $("lookupBox"), btn = $("lookupBtn");
+  if (!term) { $("aTerm").focus(); return; }
+  var my = ++lookupSeq;
+  btn.disabled = true; btn.textContent = "…";
+  box.innerHTML = '<div class="lk-note">Looking up “' + esc(term) + '”…</div>';
+  senseList(term).then(function(res){
+    if (my !== lookupSeq) return;
+    var items = res.items.slice(0, 12);
+    box.innerHTML = '<div class="lk-note">Pick a meaning — it fills in the fields below (you can still edit them):</div><div class="lk-list" id="lkList"></div>' +
+      '<div class="lk-src">Source: <a href="' + esc(res.url) + '" target="_blank" rel="noopener">' + esc(res.src) + '</a> · CC BY-SA</div>';
+    var list = $("lkList");
+    items.forEach(function(it){
+      var b = document.createElement("button"); b.type = "button"; b.className = "lk-item";
+      b.innerHTML = (it.pos ? '<span class="lk-pos">' + esc(it.pos) + '</span>' : '') + esc(it.def) + (it.ex ? '<span class="lk-ex">' + esc(it.ex) + '</span>' : '');
+      b.addEventListener("click", function(){
+        list.querySelectorAll(".lk-item").forEach(function(x){ x.classList.remove("sel"); });
+        b.classList.add("sel");
+        $("aDef").value = it.def;
+        $("aEx").value = it.ex || "";
+      });
+      list.appendChild(b);
+    });
+  }).catch(function(){
+    if (my !== lookupSeq) return;
+    box.innerHTML = '<div class="lk-note">Nothing found for “' + esc(term) + '”. Check the spelling, try the base form (e.g. “run”, not “ran”), or write the meaning yourself.</div>';
+  }).then(function(){
+    if (my !== lookupSeq) return;
+    btn.disabled = false; btn.textContent = "Look up";
+  });
 }
 
 function ensureDeck(selectValue, newName){
